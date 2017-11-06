@@ -4,6 +4,7 @@ import Controller.AppController;
 import Core.Graphics.DabBtn;
 import Core.Graphics.DabPanel;
 import Core.Graphics.DabTextField;
+import Dao.AccountDao;
 import Dao.CustomerDao;
 import Dao.OperationDao;
 
@@ -12,18 +13,19 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-public class RemoveMoneyView extends JFrame implements ActionListener {
+public class AddMoneyView extends JFrame implements ActionListener {
 
     private DabPanel dabPanel;
-    private DabTextField dabRemoveMoney;
-    private DabBtn dabRemoveMoneyBtn;
+    private DabTextField dabAddMoney;
+    private DabBtn dabAddMoneyBtn;
     private DabBtn dabReturnHomeBtn;
     private GridBagConstraints gc;
     private AppController appController;
     private OperationDao operationDao;
+    private AccountDao accountDao;
     private int accountNumber;
 
-    public RemoveMoneyView(int accountNumber) throws HeadlessException {
+    public AddMoneyView(int accountNumber) throws HeadlessException {
         this.accountNumber = accountNumber;
         this.setTitle("Distributeur");
         this.setSize(800, 600);
@@ -37,30 +39,32 @@ public class RemoveMoneyView extends JFrame implements ActionListener {
         this.dabPanel.setLayout(new GridBagLayout());
         this.gc = new GridBagConstraints();
         this.setContentPane(dabPanel);
-        this.dabRemoveMoney = new DabTextField(250, 50, 30);
-        this.dabRemoveMoneyBtn = new DabBtn("Retirer de l'argent", 200, 50, true);
+        this.dabAddMoney = new DabTextField(250, 50, 30);
+        this.dabAddMoneyBtn = new DabBtn("Déposer de l'argent", 200, 50, true);
         this.dabReturnHomeBtn = new DabBtn("retour à l'accueil", 200, 50, true);
-        this.dabPanel.add(dabRemoveMoney);
-        this.dabPanel.add(dabRemoveMoneyBtn);
+        this.dabPanel.add(dabAddMoney);
+        this.dabPanel.add(dabAddMoneyBtn);
         this.dabPanel.add(dabReturnHomeBtn);
-        this.dabRemoveMoneyBtn.addActionListener(this);
+        this.dabAddMoneyBtn.addActionListener(this);
         this.dabReturnHomeBtn.addActionListener(this);
+
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == dabRemoveMoneyBtn) {
+
+        if (e.getSource() == dabAddMoneyBtn) {
 
             this.operationDao = new OperationDao();
             CustomerDao customerDao = new CustomerDao();
             System.out.println(customerDao.getCustomerName());
-            this.operationDao.manageMoney(this.accountNumber,0, Double.parseDouble(this.dabRemoveMoney.getText()));
+            this.operationDao.manageMoney(this.accountNumber,1, Double.parseDouble(this.dabAddMoney.getText()));
         }
 
         if (e.getSource() == dabReturnHomeBtn) {
-            this.appController = new AppController(true);
+            //this.appController = new AppController(true);
+            //this.appController.ReturnHome(this.accountNumber);
             this.setVisible(false);
         }
     }
 }
-
