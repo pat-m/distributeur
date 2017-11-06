@@ -1,16 +1,19 @@
 package View;
 
 import Controller.AppController;
+import Core.GeneratePdf;
 import Core.Graphics.*;
 import Dao.AccountDao;
 import Dao.CustomerDao;
 import Dao.OperationDao;
+import Model.OperationModel;
 import Model.OperationTableModel;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
 
 
 public class HomeView extends JFrame implements ActionListener {
@@ -30,18 +33,21 @@ public class HomeView extends JFrame implements ActionListener {
     private DabBtn dabBottomBtn2;
     private DabBtn dabBottomBtn3;
     private DabBtn dabBottomBtn4;
+    private DabBtn dabPdf;
     private AlertView alertView;
-    private AccountDao accountDao;
-    private CustomerDao customerDao;
+    public AccountDao accountDao;
+    public CustomerDao customerDao;
     private JLabel dabLabelCustomerName;
     private JLabel dabLabelCustomerSurname;
     private JLabel dabLabelCustomerNumber;
     private JLabel dabLabelHello;
     private JTable tableOperation = new JTable();
-    private OperationDao operationDao;
-    private OperationTableModel operationTableModel;
+    public OperationDao operationDao;
+    public OperationTableModel operationTableModel;
     private AppController appController;
     private boolean state;
+    private int clickCount = 0;
+
 
     public HomeView(boolean state) throws HeadlessException {
 
@@ -68,6 +74,8 @@ public class HomeView extends JFrame implements ActionListener {
         // Center
         this.dabCenter = new DabPanel(800, 390,  255, 255, 255, false);
         this.dabWelcome = new DabPanel(800, 390,  255, 255, 255, true);
+        this.dabPdf = new DabBtn("Générer un Pdf", 140, 50, true);
+        dabPdf.addActionListener(this);
         this.dabPanel.add(dabWelcome);
         this.dabPanel.add(dabCenter);
         //this.dabCenter.setLayout(new GridBagLayout());
@@ -80,6 +88,7 @@ public class HomeView extends JFrame implements ActionListener {
         this.dabLabelCustomerName.setFont(new Font("Roboto", Font.BOLD, 20));
         this.dabLabelCustomerSurname.setFont(new Font("Roboto", Font.BOLD, 20));
         this.dabLabelCustomerNumber.setFont(new Font("Roboto", Font.BOLD, 16));
+
         this.dabLabelHello = new JLabel();
         this.dabLabelHello.setText("Bonjour");
         this.dabLabelHello.setFont(new Font("Roboto", Font.BOLD, 30));
@@ -91,6 +100,7 @@ public class HomeView extends JFrame implements ActionListener {
         this.dabCustomer.add(dabLabelCustomerName);
         this.dabCustomer.add(dabLabelCustomerSurname);
         this.dabCustomer.add(dabLabelCustomerNumber);
+        this.dabCustomer.add(dabPdf);
 
         this.dabOpeList = new DabTable();
         JScrollPane scrollPane = new JScrollPane(dabOpeList);
@@ -126,9 +136,21 @@ public class HomeView extends JFrame implements ActionListener {
             this.dabLabelCustomerNumber.setText("Compte:" + Integer.toString(this.accountDao.getAccountNumber()));
             this.dabLabelCustomerName.setText("Nom:" + this.customerDao.getCustomerName());
             this.dabLabelCustomerSurname.setText("Prénom:" + this.customerDao.getCustomerSurname());
-
             this.operationDao = new OperationDao();
             this.dabOpeList.setModel(this.operationTableModel = new OperationTableModel(this.operationDao.operationDetails(cptNum)));
+
+
+            if (e.getSource() == dabPdf) {
+                this.clickCount++;
+                GeneratePdf generatePdf = new GeneratePdf(
+                        this.clickCount,
+                        this.customerDao.getCustomerName(),
+                        cptNum,
+                        this.customerDao.getCustomerName(),
+                        this.customerDao.getCustomerSurname(),
+                        this.accountDao.getCurrentBalance(cptNum)
+                );
+            }
 
             this.dabCenter.setVisible(true);
             this.dabWelcome.setVisible(false);
@@ -138,23 +160,20 @@ public class HomeView extends JFrame implements ActionListener {
 
 
             if (e.getSource() == dabBottomBtn1) {
-                this.appController = new AppController(false);
-                this.appController.addMoneyView(cptNum);
+                AddMoneyView addMoneyView = new AddMoneyView(cptNum);
             }
             if (e.getSource() == dabBottomBtn2) {
-                this.appController = new AppController(false);
-                this.appController.removeMoneyView(cptNum);
+                RemoveMoneyView removeMoneyView = new RemoveMoneyView(cptNum);
             }
             if (e.getSource() == dabBottomBtn3) {
-                this.appController = new AppController(false);
-                this.appController.balanceView(cptNum);
+                BalanceView balanceView = new BalanceView(cptNum);
             }
             if (e.getSource() == dabBottomBtn4) {
                 this.dispose();
             }
 
         } catch(NumberFormatException errorNumber) {
-            //this.alertView = new AlertView("Veuillez saisir un numéro de compte", "Erreur", 3);
+            this.alertView = new AlertView("Veuillez saisir un numéro de compte", "Erreur", 3);
         }
     }
 }

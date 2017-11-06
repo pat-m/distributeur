@@ -1,5 +1,7 @@
 package Dao;
 
+import Model.AccountModel;
+import Model.CustomerModel;
 import Model.OperationModel;
 
 import java.sql.*;
@@ -7,9 +9,10 @@ import java.util.ArrayList;
 
 public class OperationDao extends OperationModel {
 
-    private ArrayList<OperationModel> operationDetails;
-    private ArrayList<OperationModel> operationAddMoney;
-    private AccountDao accountDao;
+    public ArrayList<OperationModel> operationDetails;
+    public ArrayList<OperationModel> operationAddMoney;
+    public AccountDao accountDao;
+    public ArrayList<Object> operationPdfDetails;
 
     public OperationDao() {
 
@@ -65,13 +68,11 @@ public class OperationDao extends OperationModel {
             if (type == 0) {
                 double currentBalance = this.accountDao.getCurrentBalance(accountNumber);
                 double newBalance = currentBalance - amount;
-                System.out.println(newBalance);
                 this.accountDao.setNewBalance(accountNumber, newBalance);
 
             } else {
                 double currentBalance = this.accountDao.getCurrentBalance(accountNumber);
                 double newBalance = currentBalance + amount;
-                System.out.println(newBalance);
                 this.accountDao.setNewBalance(accountNumber, newBalance);
             }
         } catch (Exception ex) {

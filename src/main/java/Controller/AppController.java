@@ -1,5 +1,6 @@
 package Controller;
 
+import Core.GeneratePdf;
 import Dao.AccountDao;
 import Dao.CustomerDao;
 import View.AddMoneyView;
@@ -20,7 +21,9 @@ public class AppController {
    private boolean state;
 
    public AppController(boolean state) {
+
       this.homeView = new HomeView(state);
+
    }
 
    public void addMoneyView(int cptNum) {

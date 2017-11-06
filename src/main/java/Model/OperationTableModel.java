@@ -1,16 +1,15 @@
 package Model;
 
-import Dao.OperationDao;
-import jdk.dynalink.Operation;
+
 
 import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
-import java.util.Date;
+
 
 public class OperationTableModel extends AbstractTableModel {
 
-    private String []  titreTab = {"Numéro Opération", "Numéro de Compte", "Type Opération", "Montant de l'opération", "Date"};
-    private ArrayList<OperationModel> operationList = new ArrayList<>();
+    public String []  titreTab = {"Numéro Opération", "Numéro de Compte", "Type Opération", "Montant de l'opération", "Date"};
+    public ArrayList<OperationModel> operationList = new ArrayList<OperationModel>();
 
 
     public OperationTableModel(ArrayList<OperationModel> operationList) {

@@ -13,11 +13,11 @@ import java.util.ArrayList;
 
 public class OperationModel extends Model {
 
-    private int operationID;
-    private int operationAccountNumber;
-    private int operationType;
-    private double operationAmount;
-    private Date operationDate;
+    public int operationID;
+    public int operationAccountNumber;
+    public int operationType;
+    public double operationAmount;
+    public Date operationDate;
     ArrayList<OperationDao> operationList = new ArrayList<OperationDao>();
 
     public OperationModel() {
