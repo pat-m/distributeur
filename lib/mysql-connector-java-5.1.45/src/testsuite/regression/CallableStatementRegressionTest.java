@@ -1696,7 +1696,7 @@ public class CallableStatementRegressionTest extends BaseTestCase {
         /*
          * Test function.
          */
-        createFunction("`testBug84324-db`.`testBug84324-func`", "(a INT, b VARCHAR(123)) RETURNS INT BEGIN RETURN a + LENGTH(b); END");
+        createFunction("`testBug84324-db`.`testBug84324-func`", "(a INT, b VARCHAR(123)) RETURNS INT DETERMINISTIC BEGIN RETURN a + LENGTH(b); END");
 
         final CallableStatement cstmtF = this.conn.prepareCall("{? = CALL testBug84324-db.testBug84324-func(?, ?)}");
         pmd = cstmtF.getParameterMetaData();
@@ -1729,5 +1729,55 @@ public class CallableStatementRegressionTest extends BaseTestCase {
         }); // Although the function metadata could be obtained, the end query actually fails due to syntax errors.
         cstmtP.close();
         cstmtF.close();
+    }
+
+    /**
+     * Tests fix for BUG#87704 (26771560) - THE STREAM GETS THE RESULT SET ?THE DRIVER SIDE GET WRONG ABOUT GETLONG().
+     * 
+     * @throws Exception
+     *             if an error occurs.
+     */
+    public void testBug87704() throws Exception {
+        if (!serverSupportsStoredProcedures()) {
+            return;
+        }
+
+        createProcedure("testBug87704",
+                "(IN PARAMIN BIGINT, OUT PARAM_OUT_LONG BIGINT, OUT PARAM_OUT_STR VARCHAR(100))\nBEGIN\nSET PARAM_OUT_LONG = PARAMIN + 100000;\nSET PARAM_OUT_STR = concat('STR' ,PARAM_OUT_LONG);end\n");
+
+        final Properties props = new Properties();
+        props.setProperty("useSSL", "false");
+        props.setProperty("useServerPrepStmts", "true");
+        props.setProperty("cachePrepStmts", "true");
+        props.setProperty("prepStmtCacheSize", "500");
+        props.setProperty("prepStmtCacheSqlLimit", "2048");
+        props.setProperty("useOldAliasMetadataBehavior", "true");
+        props.setProperty("rewriteBatchedStatements", "true");
+        props.setProperty("useCursorFetch", "true");
+        props.setProperty("defaultFetchSize", "100");
+
+        Connection con = getConnectionWithProps(props);
+
+        CallableStatement callableStatement = null;
+        try {
+            callableStatement = con.prepareCall("call testBug87704(?,?,?)");
+            callableStatement.setLong(1, 30214567L);
+            callableStatement.registerOutParameter(2, Types.BIGINT);
+            callableStatement.registerOutParameter(3, Types.VARCHAR);
+            callableStatement.execute();
+            System.out.println(callableStatement.getLong(2));
+            System.out.println(callableStatement.getString(3));
+
+            assertEquals(30314567L, callableStatement.getLong(2));
+            assertEquals("STR30314567", callableStatement.getString(3));
+
+        } finally {
+            if (callableStatement != null) {
+                callableStatement.close();
+            }
+            if (con != null) {
+                con.close();
+            }
+        }
     }
 }

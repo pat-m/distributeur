@@ -8,7 +8,7 @@ import java.util.ArrayList;
 
 public class OperationTableModel extends AbstractTableModel {
 
-    public String []  titreTab = {"Numéro Opération", "Numéro de Compte", "Type Opération", "Montant de l'opération", "Date"};
+    public String []  titreTab = {"Numéro Opération", "Numéro de Compte", "Type Opération", "Montant de l'opération", "Date", "Type de Paiement"};
     public ArrayList<OperationModel> operationList = new ArrayList<OperationModel>();
 
 
@@ -44,6 +44,8 @@ public class OperationTableModel extends AbstractTableModel {
                 return operationList.get(row).getOperationAmount();
             case 4:
                 return operationList.get(row).getOperationDate();
+            case 5:
+                return operationList.get(row).getOperationPaymentType();
             default:
                 return null;
         }

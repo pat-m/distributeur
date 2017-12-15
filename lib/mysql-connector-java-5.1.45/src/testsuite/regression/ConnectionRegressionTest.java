@@ -4033,11 +4033,10 @@ public class ConnectionRegressionTest extends BaseTestCase {
 
     /**
      * This test requires two server instances:
-     * 1) main test server pointed by com.mysql.jdbc.testsuite.url variable
-     * configured without RSA encryption support
-     * 2) additional server instance pointed by com.mysql.jdbc.testsuite.url.sha256default
-     * variable configured with default-authentication-plugin=sha256_password
-     * and RSA encryption enabled.
+     * 1) main test server pointed by com.mysql.jdbc.testsuite.url variable configured without RSA encryption support (with sha256_password_private_key_path,
+     * sha256_password_public_key_path config options unset).
+     * 2) additional server instance pointed by com.mysql.jdbc.testsuite.url.sha256default variable configured with
+     * default-authentication-plugin=sha256_password and RSA encryption enabled.
      * 
      * To run this test please add this variable to ant call:
      * -Dcom.mysql.jdbc.testsuite.url.sha256default=jdbc:mysql://localhost:3307/test?user=root&password=pwd
@@ -4059,9 +4058,9 @@ public class ConnectionRegressionTest extends BaseTestCase {
             if (!pluginIsActive(this.stmt, "sha256_password")) {
                 fail("sha256_password required to run this test");
             }
-            if (allowsRsa(this.stmt)) {
-                fail("RSA encryption must be disabled on " + System.getProperty("com.mysql.jdbc.testsuite.url") + " to run this test");
-            }
+
+            // newer GPL servers, like 8.0.4+, are using OpenSSL and can use RSA encryption, while old ones compiled with yaSSL cannot
+            boolean gplWithRSA = allowsRsa(this.stmt);
 
             try {
                 this.stmt.executeUpdate("SET @current_old_passwords = @@global.old_passwords");
@@ -4110,13 +4109,17 @@ public class ConnectionRegressionTest extends BaseTestCase {
                         }
                     }
                 });
-                assertThrows(SQLException.class, "Access denied for user 'wl5602user'.*", new Callable<Void>() {
-                    public Void call() throws Exception {
-                        getConnectionWithProps(propsAllowRetrieval);
-                        return null;
-                    }
-                });
 
+                if (gplWithRSA) {
+                    assertCurrentUser(null, propsAllowRetrieval, "wl5602user", false);
+                } else {
+                    assertThrows(SQLException.class, "Access denied for user 'wl5602user'.*", new Callable<Void>() {
+                        public Void call() throws Exception {
+                            getConnectionWithProps(propsAllowRetrieval);
+                            return null;
+                        }
+                    });
+                }
                 assertCurrentUser(null, propsNoRetrievalNoPassword, "wl5602nopassword", false);
                 assertCurrentUser(null, propsAllowRetrievalNoPassword, "wl5602nopassword", false);
 
@@ -10046,5 +10049,116 @@ public class ConnectionRegressionTest extends BaseTestCase {
             this.stmt.execute("SET @@global.init_connect='" + originalInitConnect + "'");
             this.stmt.execute("SET @@global.autocommit=" + (originalAutoCommit ? 1 : 0));
         }
+    }
+
+    /**
+     * Tests fix for Bug#88242 - autoReconnect and socketTimeout JDBC option makes wrong order of client packet.
+     * 
+     * The wrong behavior may not be observed in all systems or configurations. It seems to be easier to reproduce when SSL is enabled. Without it, the data
+     * packets flow faster and desynchronization occurs rarely, which is the root cause for this problem.
+     */
+    public void testBug88242() throws Exception {
+        Properties props = new Properties();
+        props.setProperty("useSSL", "true");
+        props.setProperty("verifyServerCertificate", "false");
+        props.setProperty("autoReconnect", "true");
+        props.setProperty("socketTimeout", "1500");
+
+        Connection testConn = getConnectionWithProps(props);
+        this.pstmt = testConn.prepareStatement("SELECT ?, SLEEP(?)");
+
+        int key = 0;
+        for (int i = 0; i < 5; i++) {
+            // Execute a query that runs faster than the socket timeout limit.
+            this.pstmt.setInt(1, ++key);
+            this.pstmt.setInt(2, 0);
+            try {
+                this.rs = this.pstmt.executeQuery();
+                assertTrue(this.rs.next());
+                assertEquals(key, this.rs.getInt(1));
+            } catch (SQLException e) {
+                fail("Exception [" + e.getClass().getName() + ": " + e.getMessage() + "] caught when no exception was expected.");
+            }
+
+            // Execute a query that runs slower than the socket timeout limit.
+            this.pstmt.setInt(1, ++key);
+            this.pstmt.setInt(2, 2);
+            final PreparedStatement localPstmt = this.pstmt;
+            assertThrows("Communications link failure.*", SQLException.class, new Callable<Void>() {
+                public Void call() throws Exception {
+                    localPstmt.executeQuery();
+                    return null;
+                }
+            });
+        }
+
+        testConn.close();
+    }
+
+    /**
+     * Tests fix for Bug#88232 - c/J does not rollback transaction when autoReconnect=true.
+     * 
+     * This is essentially a duplicate of Bug#88242, but observed in a different use case.
+     */
+    public void testBug88232() throws Exception {
+        createTable("testBug88232", "(id INT)", "INNODB");
+
+        Properties props = new Properties();
+        props.setProperty("useSSL", "false");
+        props.setProperty("autoReconnect", "true");
+        props.setProperty("socketTimeout", "2000");
+        props.setProperty("cacheServerConfiguration", "true");
+        props.setProperty("useLocalSessionState", "true");
+
+        final Connection testConn = getConnectionWithProps(props);
+        final Statement testStmt = testConn.createStatement();
+
+        try {
+            /*
+             * Step 1: Insert data in a interrupted (by socket timeout exception) transaction.
+             */
+            testStmt.execute("START TRANSACTION");
+            testStmt.execute("INSERT INTO testBug88232 VALUES (1)");
+            assertThrows("Communications link failure.*", SQLException.class, new Callable<Void>() {
+                public Void call() throws Exception {
+                    testStmt.executeQuery("SELECT SLEEP(3)"); // Throws exception due to socket timeout. Transaction should be rolled back or canceled.
+                    return null;
+                }
+            });
+            // Check data using a different connection: table should be empty.
+            this.rs = this.stmt.executeQuery("SELECT * FROM testBug88232");
+            assertFalse(this.rs.next());
+
+            /*
+             * Step 2: Insert data in a new transaction and commit.
+             */
+            testStmt.execute("START TRANSACTION"); // Reconnects and causes implicit commit in previous transaction if not rolled back.
+            testStmt.executeUpdate("INSERT INTO testBug88232 VALUES (2)");
+            testStmt.execute("COMMIT");
+
+            // Check data using a different connection: only 2nd record should be present.
+            this.rs = this.stmt.executeQuery("SELECT * FROM testBug88232");
+            assertTrue(this.rs.next());
+            assertEquals(2, this.rs.getInt(1));
+            assertFalse(this.rs.next());
+        } finally {
+            testConn.createStatement().execute("ROLLBACK"); // Make sure the table testBug88232 is unlocked in case of failure, otherwise it can't be deleted.
+            testConn.close();
+        }
+    }
+
+    /**
+     * Tests fix for Bug#27131768 - NULL POINTER EXCEPTION IN CONNECTION.
+     */
+    public void testBug27131768() throws Exception {
+        Properties props = new Properties();
+        props.setProperty("useServerPrepStmts", "true");
+        props.setProperty("useInformationSchema", "true");
+        props.setProperty("useCursorFetch", "true");
+        props.setProperty("defaultFetchSize", "3");
+
+        Connection testConn = getConnectionWithProps(props);
+        testConn.createStatement().executeQuery("SELECT 1");
+        testConn.close();
     }
 }

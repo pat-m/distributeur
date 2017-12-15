@@ -4,6 +4,7 @@ import Controller.AppController;
 import Core.GeneratePdf;
 import Core.Graphics.*;
 import Dao.AccountDao;
+import Dao.CardDao;
 import Dao.CustomerDao;
 import Dao.OperationDao;
 import Model.OperationModel;
@@ -41,11 +42,14 @@ public class HomeView extends JFrame implements ActionListener {
     private JLabel dabLabelCustomerSurname;
     private JLabel dabLabelCustomerNumber;
     private JLabel dabLabelHello;
+    private JLabel dabLabelPlafond;
+    private JLabel dabLabelPlafondMontant;
     private JTable tableOperation = new JTable();
     public OperationDao operationDao;
     public OperationTableModel operationTableModel;
     private AppController appController;
     private boolean state;
+    private CardDao cardDao;
     private int clickCount = 0;
 
 
@@ -101,6 +105,10 @@ public class HomeView extends JFrame implements ActionListener {
         this.dabCustomer.add(dabLabelCustomerSurname);
         this.dabCustomer.add(dabLabelCustomerNumber);
         this.dabCustomer.add(dabPdf);
+        this.dabLabelPlafond = new JLabel("Plafond de la CB Max 300 Euros");
+        this.dabCustomer.add(dabLabelPlafond);
+        this.dabLabelPlafondMontant = new JLabel();
+        this.dabCustomer.add(dabLabelPlafondMontant);
 
         this.dabOpeList = new DabTable();
         JScrollPane scrollPane = new JScrollPane(dabOpeList);
@@ -138,6 +146,9 @@ public class HomeView extends JFrame implements ActionListener {
             this.dabLabelCustomerSurname.setText("Prénom:" + this.customerDao.getCustomerSurname());
             this.operationDao = new OperationDao();
             this.dabOpeList.setModel(this.operationTableModel = new OperationTableModel(this.operationDao.operationDetails(cptNum)));
+            this.cardDao = new CardDao();
+            this.dabLabelPlafondMontant.setText("Montant plafond restant\n" + String.valueOf(cardDao.manageCard(cptNum)));
+
 
 
             if (e.getSource() == dabPdf) {

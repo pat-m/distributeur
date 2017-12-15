@@ -12,26 +12,27 @@ public class OperationDao extends OperationModel {
     public ArrayList<OperationModel> operationDetails;
     public ArrayList<OperationModel> operationAddMoney;
     public AccountDao accountDao;
+    public CardDao cardDao;
     public ArrayList<Object> operationPdfDetails;
 
     public OperationDao() {
 
     }
 
-    public OperationDao(Connection connexion, Statement statement, ResultSet resultSet, int operationID, int operationAccountNumber, int operationType, double operationAmount, Date operationDate) {
-        super(connexion, statement, resultSet, operationID, operationAccountNumber, operationType, operationAmount, operationDate);
+    public OperationDao(Connection connexion, Statement statement, ResultSet resultSet, int operationID, int operationAccountNumber, int operationType, double operationAmount, Date operationDate, int operationPaymentType, AccountDao accountDao) {
+        super(connexion, statement, resultSet, operationID, operationAccountNumber, operationType, operationAmount, operationDate, operationPaymentType);
     }
 
-    public ArrayList <OperationModel> operationDetails(int number) {
+    public ArrayList<OperationModel> operationDetails(int number) {
         this.getConnexion();
         this.operationDetails = new ArrayList<OperationModel>();
 
 
         try {
             this.statement = connexion.createStatement();
-            this.resultSet = statement.executeQuery("SELECT operation.operationId, operation.operationAccountNumber, operation.operationType,  operation.operationAmount, operation.operationDate FROM operation WHERE operation.operationAccountNumber =" + number);
+            this.resultSet = statement.executeQuery("SELECT operation.operationId, operation.operationAccountNumber, operation.operationType,  operation.operationAmount, operation.operationDate, operation.operationPaymentType FROM operation WHERE operation.operationAccountNumber =" + number);
             ResultSetMetaData meta = this.resultSet.getMetaData();
-            while ( this.resultSet.next() ) {
+            while (this.resultSet.next()) {
 
                 OperationModel operationList = new OperationModel();
                 int operationID = this.resultSet.getInt("operationId");
@@ -44,6 +45,8 @@ public class OperationDao extends OperationModel {
                 operationList.setOperationAmount(operationAmount);
                 Date operationDate = this.resultSet.getDate("operationDate");
                 operationList.setOperationDate(operationDate);
+                int operationPaymentType = this.resultSet.getInt("operationPaymentType");
+                operationList.setOperationPaymentType(operationPaymentType);
 
                 operationDetails.add(operationList);
 
@@ -56,7 +59,7 @@ public class OperationDao extends OperationModel {
         return operationDetails;
     }
 
-    public void manageMoney(int accountNumber,int type, double amount) {
+    public void manageMoney(int accountNumber, int type, double amount) {
 
         this.getConnexion();
 
@@ -70,6 +73,7 @@ public class OperationDao extends OperationModel {
                 double newBalance = currentBalance - amount;
                 this.accountDao.setNewBalance(accountNumber, newBalance);
 
+
             } else {
                 double currentBalance = this.accountDao.getCurrentBalance(accountNumber);
                 double newBalance = currentBalance + amount;
@@ -79,5 +83,23 @@ public class OperationDao extends OperationModel {
             ex.printStackTrace();
         }
 
+    }
+
+    public double removeMoneyTotal(int account) {
+        double totalAmount = 0;
+        try {
+            this.statement = connexion.createStatement();
+            this.resultSet = statement.executeQuery("SELECT SUM(operation.operationAmount) as operationAmount FROM operation WHERE operation.operationAccountNumber = " + account +" AND operation.operationType = 1 GROUP BY operation.operationType");
+            ResultSetMetaData meta = this.resultSet.getMetaData();
+
+            while (this.resultSet.next()) {
+                totalAmount = this.resultSet.getDouble("operationAmount");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        System.out.println(totalAmount);
+        return totalAmount;
     }
 }

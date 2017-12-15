@@ -1,4 +1,4 @@
-MySQL Connector/J 5.1.44
+MySQL Connector/J 5.1.45
 
 This is a release of MySQL Connector/J, Oracle's dual-
 license JDBC Driver for MySQL. For the avoidance of

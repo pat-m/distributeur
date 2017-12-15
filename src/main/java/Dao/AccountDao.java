@@ -20,7 +20,14 @@ public class AccountDao extends AccountModel {
         CustomerDao customer = new CustomerDao();
         try {
             this.statement = this.connexion.createStatement();
-            this.resultSet = this.statement.executeQuery("SELECT account.accountNumber, customer.customerName, customer.customerSurname, customer.customerAddress, customer.customerZip, customer.customerCity FROM account INNER JOIN customer ON account.accountOwner = customer.customerId WHERE account.accountNumber LIKE '%" + number + "%' ");
+            this.resultSet = this.statement.executeQuery(
+                    "SELECT account.accountNumber, customer.customerName, customer.customerSurname, customer.customerAddress, customer.customerZip, customer.customerCity \n" +
+                    "FROM customer\n" +
+                    "INNER JOIN account_has_customer \n" +
+                    "ON account_has_customer.customer_customerId = customer.customerId\n" +
+                    "INNER JOIN account \n" +
+                    "ON account_has_customer.account_accountId = account.accountId\n" +
+                    "WHERE account.accountNumber LIKE '%" + number + "%' ");
             ResultSetMetaData meta = resultSet.getMetaData();
             while (resultSet.next()) {
 

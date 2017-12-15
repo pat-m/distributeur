@@ -18,18 +18,20 @@ public class OperationModel extends Model {
     public int operationType;
     public double operationAmount;
     public Date operationDate;
+    public int operationPaymentType;
     ArrayList<OperationDao> operationList = new ArrayList<OperationDao>();
 
     public OperationModel() {
     }
 
-    public OperationModel(Connection connexion, Statement statement, ResultSet resultSet, int operationID, int operationAccountNumber, int operationType, double operationAmount, Date operationDate) {
+    public OperationModel(Connection connexion, Statement statement, ResultSet resultSet, int operationID, int operationAccountNumber, int operationType, double operationAmount, Date operationDate, int operationPaymentType) {
         super(connexion, statement, resultSet);
         this.operationID = operationID;
         this.operationAccountNumber = operationAccountNumber;
         this.operationType = operationType;
         this.operationAmount = operationAmount;
         this.operationDate = operationDate;
+        this.operationPaymentType = operationPaymentType;
     }
 
     public int getOperationID() {
@@ -79,6 +81,22 @@ public class OperationModel extends Model {
     }
 
     public void setOperationDate(Date operationDate) {
+
         this.operationDate = operationDate;
+    }
+
+    public String getOperationPaymentType() {
+        switch (this.operationPaymentType) {
+            case 0:
+                return "Chéque";
+            case 1:
+                return "Carte Bancaire";
+        }
+
+        return Integer.toString(operationPaymentType);
+    }
+
+    public void setOperationPaymentType(int operationPaymentType) {
+        this.operationPaymentType = operationPaymentType;
     }
 }
